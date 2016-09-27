@@ -1,6 +1,8 @@
 import csv
 import sys
 
+from collections import deque
+
 def rank_regions(lena_data):
     start = 0
     end = 12
@@ -68,7 +70,7 @@ def rank_regions(lena_data):
         window = lena_data[start:end]
 
     ranked_regions = sorted(region_values,
-                            key=lambda region: region[1],
+                            key=lambda region: region[3],
                             reverse=True)
     return ranked_regions
 
@@ -117,18 +119,33 @@ def read_lena_csv():
     return lena_data
 
 def output_audacity_labels(lena_data, ranked_regions, output):
+    # ranked_deque = deque(ranked_regions)
+    # curr_region = ranked_deque.popleft()
+
+    ranked_indices = [region[0] for region in ranked_regions]
 
     with open(output, "wb") as output:
         for index, region in enumerate(lena_data):
-            output.write("{:.6f} {:.6f} {}\n".format(index*5*60, (index+1)*5*60, region[24]))
+            value = region[24]
+            if index in ranked_indices:
+                value += ":  RANK {}".format(ranked_indices.index(index)+1)
+                if only_print_ranked:
+                    output.write("{:.6f} {:.6f} {}\n".format(index * 5 * 60, (index + subregion_size) * 5 * 60, value))
+                    continue
+            if not only_print_ranked:
+                output.write("{:.6f} {:.6f} {}\n".format(index*5*60, (index+1)*5*60, value))
 
 if __name__ == "__main__":
     input_csv = sys.argv[1]
     output = sys.argv[2]
 
-    top_n = sys.argv[3]
+    top_n = int(sys.argv[3])
 
     subregion_size = int(sys.argv[4]) # in terms of how many 5min
+
+    only_print_ranked = False
+    if len(sys.argv) > 5:
+        only_print_ranked = True
 
     lena_regions = read_lena_csv()
 
@@ -136,6 +153,6 @@ if __name__ == "__main__":
 
     filtered_regions = filter_overlaps(ranked_regions, top_n)
 
-    output_audacity_labels(lena_regions, ranked_regions, output)
+    output_audacity_labels(lena_regions, filtered_regions, output)
 
     print
